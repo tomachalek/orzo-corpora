@@ -22,6 +22,7 @@ var numWorkers = 1;
 var verticalPath = 'd:/work/data/corpora/vertical/jerome/full';
 var sgml = require('sgml');
 var stopWords = [',', '.', '?', '!', ':', '/', ';', '-', '_', '"', '\'', '|', '(', ')', '}', '{', '%', '§', '@', '#', '=', '+', '*'];
+var corpEncoding = 'iso-8859-2';
 
 var outf = 'd:/tmp/words-table.txt'
 
@@ -47,7 +48,7 @@ processChunk(function (chunk, map) {
     var line;
     while (chunk.hasNext()) {
         doWith(
-            orzo.fileReader(chunk.next(), 'iso-8859-2'), function (fr) {
+            orzo.fileReader(chunk.next(), corpEncoding), function (fr) {
                 while (fr.hasNext()) {
                     line = sgml.parse(fr.next());
                     if (line) {

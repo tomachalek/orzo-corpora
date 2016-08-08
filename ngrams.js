@@ -14,30 +14,47 @@
  * limitations under the License.
  */
 
+/*
+ * An orzo.js script to generate 1&2-grams
+ */
+
 /// <reference path="./types/orzojs.d.ts" />
 
+var sgml = require('sgml');
+
+// -------------------- CONFIG BEGIN -----------------------------------
 
 var numWorkers = 1;
 //var verticalPath = 'd:/work/data/corpora/vertical/jerome/small';
 var verticalPath = 'd:/work/data/corpora/vertical/jerome/full';
-var limit = 100000000;
+var limit = 100000000; // just for debugging purposes
 var ngramSize = 2;
-var sgml = require('sgml');
+var corpusEncoding = 'iso-8859-2';
 var stopWords = [',', '.', '?', '!', ':', '/', ';', '-', '_', '"', '\'', '|', '(', ')', '}', '{', '%', '§', '@', '#', '=', '+', '*'];
-var alpha = ['a', 'á', 'b', 'c', 'č', 'd', 'ď', 'e', 'é', 'ě', 'f', 'g', 'h', 'i', 'í', 'j', 'k', 'l', 'm', 'n', 'ň'];
+var alpha = [
+    'a', 'á', 'b', 'c', 'č', 'd', 'ď', 'e', 'é', 'ě',
+    'f', 'g', 'h', 'i', 'í', 'j', 'k', 'l', 'm', 'n',
+    'ň', 'o', 'ó', 'p', 'q', 'r', 'ř', 's', 'š', 't',
+    'ť', 'u', 'ú', 'ů', 'v', 'w', 'x', 'y', 'ý', 'z',
+    'ž'
+];
 
-//var dict = orzo.deserialize('d:/tmp/words-table.txt');
 var proc = alpha.slice(7, 12);
-var outf = 'd:/tmp/ngrams-7-12.txt'
+var outfN1 = 'd:/tmp/ngram1.txt';
+var outfN2 = 'd:/tmp/ngram2.txt';
+
+
+// --------------------- CONFIG END ------------------------------------
+
 
 dataChunks(numWorkers, function (idx) {
     return orzo.directoryReader(verticalPath, idx);
 });
 
 
-function isAccepted(lexeme) {
-    var w = lexeme.getWord();
-    return stopWords.indexOf(w) === -1;
+function isAcceptedWord(lexeme) {
+    return lexeme instanceof sgml.Position &&
+            stopWords.indexOf(lexeme.getWord()) === -1;
 }
 
 
@@ -48,7 +65,7 @@ function processLine(lexeme, stack, ngram, map) {
             ngram.splice();
         }
 
-    } else if (lexeme instanceof sgml.Position && isAccepted(lexeme)) {
+    } else if (isAccepted(lexeme)) {
         ngram.push(lexeme.getWord());
         if (ngram.length > ngramSize) {
             ngram.shift();
@@ -69,7 +86,7 @@ processChunk(function (chunk, map) {
 
     while (chunk.hasNext()) {
         doWith(
-            orzo.fileReader(chunk.next(), 'iso-8859-2'), function (fr) {
+            orzo.fileReader(chunk.next(), corpusEncoding), function (fr) {
                 var ngram = [];
                 var i = 0;
                 while (fr.hasNext()) {
@@ -102,21 +119,20 @@ reduce(numWorkers, function (key, values) {
 
 finish(function (result) {
     doWith(
-        [orzo.fileWriter('d:/tmp/ngram1.txt'), orzo.fileWriter('d:/tmp/ngram2.txt')],
+        [orzo.fileWriter(outfN1), orzo.fileWriter(outfN2)],
         function (fw1, fw2) {
             var offset = 0;
             result.sorted.each(function (key, values) {
                 offset += values[0].size();
                 fw1.writeln(orzo.sprintf('%s %s', key, ~~offset));
                 values[0].forEach(function (item) {
-                    //orzo.printf('%s --> %s\n', key, values[0]);
                     fw2.writeln(item);
-                })
+                });
 
             });
         },
         function (err) {
-            orzo.print(err);
+            orzo.printf('ERROR generating result: %s\n', err);
         }
     );
 });
